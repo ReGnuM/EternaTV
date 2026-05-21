@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>EternaTV – Películas</title>
+<link rel="stylesheet" href="styles.css">
+
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* LAYOUT */
+#main-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#player-section {
+  width: 340px;
+  padding: 24px;
+  overflow-y: auto;
+  background: var(--surface2);
+}
+
+#channel-section {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  max-height: 100vh;
+}
+
+/* FORMULARIO */
+.form-box {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  padding: 22px;
+  border-radius: var(--radius);
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.btn-eternatv {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--grad);
+  color: white;
+  cursor: pointer;
+  margin-top: 15px;
+}
+
+/* FICHA */
+#ficha {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 30px;
+  border-radius: var(--radius);
+  max-width: 1100px;
+  margin: auto;
+  position: relative;
+  overflow: visible;
+  z-index: 1;
+}
+
+#ficha-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(40px) brightness(0.4);
+  z-index: -1;
+  pointer-events: none;
+}
+
+#trailerFrame {
+  width: 100%;
+  height: 400px;
+  border: none;
+  border-radius: var(--radius);
+}
+
+/* SIMILARES */
+#similares {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 20px;
+}
+
+#similares img {
+  transition: 0.2s;
+}
+
+#similares img:hover {
+  transform: scale(1.05);
+}
+
+/* LISTAS */
+#estrenosLista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.estreno-card {
+  width: 150px;
+  cursor: pointer;
+}
+
+.estreno-card img {
+  width: 100%;
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+}
+
+/* BOTONES TOPBAR */
+.topbar-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(15,23,42,0.8);
+  color: #fff;
+  margin-left: 10px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<header id="topbar" style="height:90px; display:flex; align-items:center; padding:0 16px;">
+  <a href="index.html"><img src="EternaTV.png" style="height:180px;"></a>
+
+  <button id="btnEstrenos" class="topbar-btn">🎬 Estrenos</button>
+  <a href="series.html"><button class="topbar-btn">📺 Series</button></a>
+</header>
+
+<main id="main-layout">
+
+<section id="player-section">
+  <div class="form-box">
+    <h2>Buscar película</h2>
+    <input id="entrada" class="form-input" type="text" placeholder="Título o TMDB ID">
+    <button id="buscarBtn" class="btn-eternatv">Buscar</button>
+    <button id="verOnline" class="btn-eternatv" style="display:none;">VER ONLINE</button>
+  </div>
+</section>
+
+<section id="channel-section">
+
+  <div id="instrucciones" style="text-align:center; padding:60px 20px;">
+    <h2>Bienvenido a EternaTV</h2>
+    <p>Busca una película o pulsa Estrenos.</p>
+  </div>
+
+  <div id="estrenosCont" style="display:none;">
+    <h2>🎬 Últimos estrenos</h2>
+    <div id="estrenosLista"></div>
+  </div>
+
+  <div id="ficha">
+    <div id="ficha-bg"></div>
+    <div id="ficha-content">
+
+      <h1 id="tituloFicha"></h1>
+
+      <div style="display:flex; gap:24px;">
+        <img id="poster" style="width:260px; border-radius:var(--radius);">
+        <div style="flex:1;">
+          <p id="infoExtra"></p>
+          <h3>Reparto</h3><p id="reparto"></p>
+          <h3>Productoras</h3><p id="productoras"></p>
+          <h3>Géneros</h3><p id="generos"></p>
+          <h3>Países</h3><p id="paises"></p>
+          <h3>Idioma</h3><p id="idioma"></p>
+        </div>
+      </div>
+
+      <h3>Sinopsis</h3>
+      <p id="descripcionFicha"></p>
+
+      <h3>Trailer</h3>
+      <iframe id="trailerFrame"></iframe>
+
+      <h3>Similares</h3>
+      <div id="similares"></div>
+
+    </div>
+  </div>
+
+</section>
+</main>
+
+<!-- MODAL FULLSCREEN -->
+<div id="modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.92); display:none; justify-content:center; align-items:center; z-index:999999;">
+  <span onclick="cerrarModal()" style="position:absolute; top:20px; right:30px; font-size:40px; color:white; cursor:pointer;">✖</span>
+  <iframe id="iframePlayer" allow="fullscreen; picture-in-picture" allowfullscreen style="width:100%; height:100%; border:none; background:black;"></iframe>
+</div>
+
+<script>
+// TOKEN TMDB
+const API_TOKEN = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIxMzliMGFhOTQyZmVjNjNjYWNlYzY0YmJhMjg3MDZkYSIsIm5iZiI6MTcyNzg2NzQzNy4wODUsInN1YiI6IjY2ZmQyYTJkNjdiMmExNjQ2NmQwNmQwZCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.japXQHRp-yOYm--l7DvOqkFAaB0O13OA7KZNaaFX3PE";
+
+// ELEMENTOS
+const entrada = document.getElementById("entrada");
+const buscarBtn = document.getElementById("buscarBtn");
+const verOnline = document.getElementById("verOnline");
+
+const instrucciones = document.getElementById("instrucciones");
+const ficha = document.getElementById("ficha");
+
+const poster = document.getElementById("poster");
+const tituloFicha = document.getElementById("tituloFicha");
+const infoExtra = document.getElementById("infoExtra");
+const descripcionFicha = document.getElementById("descripcionFicha");
+const reparto = document.getElementById("reparto");
+const productoras = document.getElementById("productoras");
+const generos = document.getElementById("generos");
+const paises = document.getElementById("paises");
+const idioma = document.getElementById("idioma");
+const trailerFrame = document.getElementById("trailerFrame");
+const similares = document.getElementById("similares");
+const fichaBg = document.getElementById("ficha-bg");
+
+const estrenosCont = document.getElementById("estrenosCont");
+const estrenosLista = document.getElementById("estrenosLista");
+
+const modal = document.getElementById("modal");
+const iframePlayer = document.getElementById("iframePlayer");
+
+/* -------------------- FUNCIONES -------------------- */
+
+function interpretarEntrada(valor) {
+  return /^\d+$/.test(valor.trim()) ? "tmdb" : "titulo";
+}
+
+async function buscarTMDB(titulo) {
+  const url = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(titulo)}&language=es-ES`;
+  const res = await fetch(url, { headers:{ accept:"application/json", Authorization:API_TOKEN }});
+  const data = await res.json();
+  return data.results?.[0]?.id || null;
+}
+
+async function obtenerFicha(id) {
+  const url = `https://api.themoviedb.org/3/movie/${id}?language=es-ES&append_to_response=credits,similar,videos`;
+  const res = await fetch(url, { headers:{ accept:"application/json", Authorization:API_TOKEN }});
+  return await res.json();
+}
+
+function mostrarFicha(info) {
+  instrucciones.style.display = "none";
+  estrenosCont.style.display = "none";
+  ficha.style.display = "block";
+
+  fichaBg.style.backgroundImage = info.backdrop_path
+    ? `url(https://image.tmdb.org/t/p/original${info.backdrop_path})`
+    : "none";
+
+  poster.src = info.poster_path
+    ? "https://image.tmdb.org/t/p/w500" + info.poster_path
+    : "https://via.placeholder.com/300x450?text=Sin+Imagen";
+
+  tituloFicha.textContent = info.title;
+
+  const duracion = info.runtime || "?";
+  const fecha = info.release_date || "?";
+  const nota = info.vote_average?.toFixed(1) || "?";
+
+  infoExtra.textContent = `⭐ ${nota} · ${duracion} min · ${fecha}`;
+
+  descripcionFicha.textContent = info.overview || "Sin descripción disponible.";
+
+  reparto.textContent = info.credits?.cast?.slice(0, 10).map(a => a.name).join(", ") || "Sin datos.";
+  productoras.textContent = info.production_companies?.map(p => p.name).join(", ") || "Sin datos.";
+  generos.textContent = info.genres?.map(g => g.name).join(", ") || "Sin datos.";
+  paises.textContent = info.production_countries?.map(c => c.name).join(", ") || "Sin datos.";
+  idioma.textContent = info.original_language?.toUpperCase() || "—";
+
+  const trailer = info.videos?.results?.find(v => v.type === "Trailer" && v.site === "YouTube");
+  trailerFrame.src = trailer ? `https://www.youtube.com/embed/${trailer.key}` : "";
+
+  similares.innerHTML = "";
+  if (info.similar?.results?.length) {
+    info.similar.results.slice(0, 12).forEach(sim => {
+      const img = sim.poster_path
+        ? "https://image.tmdb.org/t/p/w200" + sim.poster_path
+        : "https://via.placeholder.com/200x300?text=Sin+Imagen";
+
+      const card = document.createElement("div");
+      card.style.minWidth = "120px";
+      card.style.cursor = "pointer";
+      card.style.textAlign = "center";
+
+      card.innerHTML = `
+        <img src="${img}" style="width:100%; border-radius:var(--radius); margin-bottom:6px;">
+        <div style="font-size:12px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          ${sim.title}
+        </div>
+      `;
+
+      card.onclick = () => {
+        entrada.value = sim.id;
+        generarEnlace();
+      };
+
+      similares.appendChild(card);
+    });
+  }
+}
+
+function prepararVerOnline(id) {
+  const url = `https://vimeus.com/e/movie?tmdb=${id}&view_key=flXlJPNAHHQDjF4P3BBJxIiJ8AKUwMKNTi0EHigOq58&title=EternaTV`;
+
+  verOnline.style.display = "block";
+  verOnline.onclick = () => abrirModal(url);
+}
+
+function abrirModal(url) {
+  modal.style.display = "flex";
+  iframePlayer.src = url;
+}
+
+function cerrarModal() {
+  modal.style.display = "none";
+  iframePlayer.src = "";
+}
+
+async function generarEnlace() {
+  const valor = entrada.value.trim();
+  if (!valor) return alert("Escribe un título o un ID TMDB.");
+
+  let id = null;
+
+  if (interpretarEntrada(valor) === "tmdb") {
+    id = valor;
+  } else {
+    id = await buscarTMDB(valor);
+  }
+
+  if (!id) return alert("Película no encontrada.");
+
+  const info = await obtenerFicha(id);
+  mostrarFicha(info);
+  prepararVerOnline(id);
+}
+
+async function cargarEstrenos() {
+  instrucciones.style.display = "none";
+  ficha.style.display = "none";
+  estrenosCont.style.display = "block";
+
+  estrenosLista.innerHTML = "Cargando estrenos...";
+
+  const url = "https://api.themoviedb.org/3/movie/now_playing?language=es-ES&page=1";
+  const res = await fetch(url, { headers:{ accept:"application/json", Authorization:API_TOKEN }});
+  const data = await res.json();
+
+  estrenosLista.innerHTML = "";
+  data.results.slice(0, 20).forEach(p => {
+    const img = p.poster_path
+      ? "https://image.tmdb.org/t/p/w200" + p.poster_path
+      : "https://via.placeholder.com/200x300?text=Sin+Imagen";
+
+    const card = document.createElement("div");
+    card.className = "estreno-card";
+    card.innerHTML = `<img src="${img}"><div>${p.title}</div>`;
+    card.onclick = async () => {
+      entrada.value = p.id;
+      const info = await obtenerFicha(p.id);
+      mostrarFicha(info);
+      prepararVerOnline(p.id);
+    };
+    estrenosLista.appendChild(card);
+  });
+}
+
+/* -------------------- EVENTOS -------------------- */
+
+buscarBtn.addEventListener("click", generarEnlace);
+entrada.addEventListener("keydown", e => { if (e.key === "Enter") generarEnlace(); });
+
+document.getElementById("btnEstrenos").addEventListener("click", cargarEstrenos);
+
+/* -------------------- AUTOLOAD DESDE SERIES.HTML -------------------- */
+const params = new URLSearchParams(window.location.search);
+if (params.get("estrenos") === "1") {
+  cargarEstrenos();
+}
+</script>
+
+</body>
+</html>

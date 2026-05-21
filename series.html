@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>EternaTV – Series</title>
+<link rel="stylesheet" href="styles.css">
+
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* LAYOUT */
+#main-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#left {
+  width: 340px;
+  padding: 24px;
+  overflow-y: auto;
+  background: var(--surface2);
+}
+
+#right {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  max-height: 100vh;
+}
+
+/* FORMULARIO */
+.form-box {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  padding: 22px;
+  border-radius: var(--radius);
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.btn-eternatv {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--grad);
+  color: white;
+  cursor: pointer;
+  margin-top: 15px;
+}
+
+/* LISTA SERIES */
+#seriesLista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.card {
+  width: 150px;
+  cursor: pointer;
+}
+
+.card img {
+  width: 100%;
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+}
+
+/* FICHA */
+#ficha {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 30px;
+  border-radius: var(--radius);
+  max-width: 1100px;
+  margin: 60px auto; /* ← BAJA LA FICHA */
+  position: relative;
+  overflow: visible;
+  z-index: 1;
+}
+
+#ficha-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(40px) brightness(0.4);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* TEMPORADAS — NUEVO DISEÑO */
+#listaTemporadas {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.temp-btn {
+  padding: 12px 18px;
+  background: #0f172a; /* oscuro */
+  border: 1px solid #94a3b8; /* borde claro */
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: #f97316; /* naranja */
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+.temp-btn:hover {
+  background: #1e293b;
+  border-color: #f97316;
+  transform: scale(1.05);
+}
+
+/* EPISODIOS */
+#listaEpisodios {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ep-card {
+  padding: 12px;
+  background: var(--surface2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  border: 1px solid var(--border2);
+}
+
+.ep-card:hover {
+  background: var(--surface3);
+}
+
+/* NAVEGACIÓN — NUEVO DISEÑO */
+#navEpisodios {
+  display: flex;
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.nav-btn {
+  flex: 1;
+  padding: 16px;
+  background: #0f172a;
+  border: 1px solid #f97316;
+  border-radius: var(--radius);
+  color: #f97316;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.nav-btn:hover {
+  background: #1e293b;
+  transform: scale(1.03);
+}
+
+/* MODAL */
+#modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 999999;
+}
+
+#modal iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: black;
+}
+
+/* HEADER (igual que cine.html) */
+.topbar-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(15,23,42,0.8);
+  color: #fff;
+  margin-left: 10px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<header id="topbar" style="height:90px; display:flex; align-items:center; padding:0 16px;">
+  <a href="index.html"><img src="EternaTV.png" style="height:180px;"></a>
+
+  <a href="cine.html?estrenos=1"><button class="topbar-btn">🎬 Estrenos</button></a>
+  <button class="topbar-btn">📺 Series</button>
+</header>
+
+<main id="main-layout">
+
+<section id="left">
+  <div class="form-box">
+    <h2>Buscar serie</h2>
+    <input id="entrada" class="form-input" type="text" placeholder="Título o TMDB ID">
+    <button id="buscarBtn" class="btn-eternatv">Buscar</button>
+  </div>
+</section>
+
+<section id="right">
+
+  <div id="instrucciones" style="text-align:center; padding:60px 20px;">
+    <h2>Series en emisión</h2>
+    <p>Pulsa una serie para ver temporadas y episodios.</p>
+  </div>
+
+  <div id="seriesCont">
+    <div id="seriesLista"></div>
+  </div>
+
+  <div id="ficha">
+    <div id="ficha-bg"></div>
+    <div id="ficha-content">
+
+      <h1 id="tituloFicha"></h1>
+
+      <div style="display:flex; gap:24px;">
+        <img id="poster" style="width:260px; border-radius:var(--radius);">
+        <div style="flex:1;">
+          <p id="infoExtra"></p>
+          <h3>Géneros</h3><p id="generos"></p>
+          <h3>Idioma</h3><p id="idioma"></p>
+        </div>
+      </div>
+
+      <h3>Sinopsis</h3>
+      <p id="descripcionFicha"></p>
+
+      <h3>Temporadas</h3>
+      <div id="listaTemporadas"></div>
+
+      <h3>Episodios</h3>
+      <div id="listaEpisodios"></div>
+
+      <div id="navEpisodios">
+        <button id="btnPrevEp" class="nav-btn">⏮ Episodio anterior</button>
+        <button id="btnNextEp" class="nav-btn">⏭ Episodio siguiente</button>
+      </div>
+
+    </div>
+  </div>
+
+</section>
+</main>
+
+<!-- MODAL FULLSCREEN -->
+<div id="modal">
+  <span onclick="cerrarModal()" style="position:absolute; top:20px; right:30px; font-size:40px; color:white; cursor:pointer;">✖</span>
+  <iframe id="iframePlayer" allow="fullscreen; picture-in-picture" allowfullscreen></iframe>
+</div>
+
+<script>
+const API_TOKEN = "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIxMzliMGFhOTQyZmVjNjNjYWNlYzY0YmJhMjg3MDZkYSIsIm5iZiI6MTcyNzg2NzQzNy4wODUsInN1YiI6IjY2ZmQyYTJkNjdiMmExNjQ2NmQwNmQwZCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.japXQHRp-yOYm--l7DvOqkFAaB0O13OA7KZNaaFX3PE";
+
+let serieActual = null;
+let temporadaActual = 1;
+let episodioActual = 1;
+
+const entrada = document.getElementById("entrada");
+const buscarBtn = document.getElementById("buscarBtn");
+const seriesLista = document.getElementById("seriesLista");
+const instrucciones = document.getElementById("instrucciones");
+const ficha = document.getElementById("ficha");
+
+const tituloFicha = document.getElementById("tituloFicha");
+const poster = document.getElementById("poster");
+const infoExtra = document.getElementById("infoExtra");
+const descripcionFicha = document.getElementById("descripcionFicha");
+const generos = document.getElementById("generos");
+const idioma = document.getElementById("idioma");
+
+const listaTemporadas = document.getElementById("listaTemporadas");
+const listaEpisodios = document.getElementById("listaEpisodios");
+
+const btnPrevEp = document.getElementById("btnPrevEp");
+const btnNextEp = document.getElementById("btnNextEp");
+
+const modal = document.getElementById("modal");
+const iframePlayer = document.getElementById("iframePlayer");
+
+async function cargarSeries() {
+  const url = "https://api.themoviedb.org/3/tv/on_the_air?language=es-ES&page=1";
+  const res = await fetch(url, { headers:{ accept:"application/json", Authorization:API_TOKEN }});
+  const data = await res.json();
+
+  seriesLista.innerHTML = "";
+  data.results.forEach(s => {
+    const img = s.poster_path
+      ? "https://image.tmdb.org/t/p/w200" + s.poster_path
+      : "https://via.placeholder.com/200x300?text=Sin+Imagen";
+
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<img src="${img}"><div>${s.name}</div>`;
+    card.onclick = () => cargarFichaSerie(s.id);
+    seriesLista.appendChild(card);
+  });
+}
+
+async function cargarFichaSerie(id) {
+  serieActual = id;
+
+  const url = `https://api.themoviedb.org/3/tv/${id}?language=es-ES`;
+  const res = await fetch(url, { headers:{ accept:"application/json", Authorization:API_TOKEN }});
+  const info = await res.json();
+
+  instrucciones.style.display = "none";
+  ficha.style.display = "block";
+
+  document.getElementById("ficha-bg").style.backgroundImage =
+    info.backdrop_path ? `url(https://image.tmdb.org/t/p/original${info.backdrop_path})` : "none";
+
+  poster.src = info.poster_path
+    ? "https://image.tmdb.org/t/p/w500" + info.poster_path
+    : "https://via.placeholder.com/300x450?text=Sin+Imagen";
+
+  tituloFicha.textContent = info.name;
+  descripcionFicha.textContent = info.overview || "Sin descripción disponible.";
+  generos.textContent = info.genres.map(g => g.name).join(", ");
+  idioma.textContent = info.original_language.toUpperCase();
+
+  mostrarTemporadas(info);
+  cargarEpisodios(id, 1);
+}
+
+function mostrarTemporadas(info) {
+  listaTemporadas.innerHTML = "";
+  info.seasons.forEach(season => {
+    const btn = document.createElement("button");
+    btn.className = "temp-btn";
+    btn.textContent = season.name;
+    btn.onclick = () => {
+      temporadaActual = season.season_number;
+      cargarEpisodios(info.id, temporadaActual);
+    };
+    listaTemporadas.appendChild(btn);
+  });
+}
+
+async function cargarEpisodios(idSerie, temporada) {
+  const url = `https://api.themoviedb.org/3/tv/${idSerie}/season/${temporada}?language=es-ES`;
+  const res = await fetch(url, { headers:{ accept:"application/json", Authorization:API_TOKEN }});
+  const data = await res.json();
+
+  listaEpisodios.innerHTML = "";
+
+  data.episodes.forEach(ep => {
+    const div = document.createElement("div");
+    div.className = "ep-card";
+    div.innerHTML = `<strong>${ep.episode_number}. ${ep.name}</strong>`;
+    div.onclick = () => {
+      episodioActual = ep.episode_number;
+      reproducirEpisodio(idSerie, temporada, episodioActual);
+    };
+    listaEpisodios.appendChild(div);
+  });
+}
+
+function reproducirEpisodio(idSerie, temporada, episodio) {
+  const url = `https://vimeus.com/e/serie?tmdb=${idSerie}&se=${temporada}&ep=${episodio}&view_key=flXlJPNAHHQDjF4P3BBJxIiJ8AKUwMKNTi0EHigOq58&title=EternaTV`;
+  abrirModal(url);
+}
+
+function abrirModal(url) {
+  modal.style.display = "flex";
+  iframePlayer.src = url;
+}
+
+function cerrarModal() {
+  modal.style.display = "none";
+  iframePlayer.src = "";
+}
+
+btnPrevEp.onclick = () => {
+  if (episodioActual > 1) {
+    episodioActual--;
+    reproducirEpisodio(serieActual, temporadaActual, episodioActual);
+  }
+};
+
+btnNextEp.onclick = () => {
+  episodioActual++;
+  reproducirEpisodio(serieActual, temporadaActual, episodioActual);
+};
+
+buscarBtn.onclick = async () => {
+  const q = entrada.value.trim();
+  if (!q) return;
+
+  const url = `https://api.themoviedb.org/3/search/tv?query=${encodeURIComponent(q)}&language=es-ES`;
+  const res = await fetch(url, { headers:{ accept:"application/json", Authorization:API_TOKEN }});
+  const data = await res.json();
+
+  if (!data.results.length) return alert("No encontrado.");
+
+  cargarFichaSerie(data.results[0].id);
+};
+
+cargarSeries();
+</script>
+
+</body>
+</html>
