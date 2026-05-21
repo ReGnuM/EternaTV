@@ -53,12 +53,12 @@ function initClock() {
 }
 
 // ============================================================
-// LOAD CHANNELS (CON PROXY CORS AUTOMÁTICO)
+// LOAD CHANNELS (PRODUCCIÓN ROBUSTA)
 // ============================================================
 
 const API_URL = "https://eduardo.kesug.com/agencia/tv/channels.php?i=1";
 
-// proxy CORS (fallback automático)
+// Proxy CORS fallback
 const PROXY_URL =
   "https://api.allorigins.win/raw?url=" +
   encodeURIComponent(API_URL);
@@ -66,47 +66,58 @@ const PROXY_URL =
 async function load() {
   showSkeletons();
 
+  let data = null;
+
+  // ----------------------------
+  // 1) INTENTO DIRECTO (KESUG)
+  // ----------------------------
   try {
-    // 1) intento directo (Kesug)
-    let res = await fetch(API_URL, { mode: "cors" });
+    const res = await fetch(API_URL, { cache: "no-store" });
+    const text = await res.text();
 
-    if (!res.ok) throw new Error("Direct fetch failed");
-
-    allChannels = await res.json();
-
-  } catch (e) {
     try {
-      // 2) fallback proxy (GitHub Pages safe)
+      data = JSON.parse(text);
+    } catch (e) {
+      data = null;
+    }
+  } catch (e) {
+    data = null;
+  }
+
+  // ----------------------------
+  // 2) PROXY FALLBACK
+  // ----------------------------
+  if (!data) {
+    try {
       const res = await fetch(PROXY_URL);
+      const text = await res.text();
 
-      if (!res.ok) throw new Error("Proxy fetch failed");
-
-      allChannels = await res.json();
-
-    } catch (e2) {
-      // 3) fallback local
-      allChannels = getDemoChannels();
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        data = null;
+      }
+    } catch (e) {
+      data = null;
     }
   }
 
+  // ----------------------------
+  // 3) FALLBACK LOCAL (SEGURO)
+  // ----------------------------
+  if (!data || !Array.isArray(data)) {
+    console.warn("⚠️ Usando canales demo (fallback local)");
+    data = getDemoChannels();
+  }
+
+  // ----------------------------
+  // FINALIZACIÓN
+  // ----------------------------
+  allChannels = data;
   filtered = [...allChannels];
+
   updateCount();
   render();
-}
-
-function getDemoChannels() {
-  return [
-    { name:"La 1",       logo:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/La_1_logo_2021.svg/200px-La_1_logo_2021.svg.png", region:"Nacional", streams:[] },
-    { name:"La 2",       logo:"https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/La_2_logo_2021.svg/200px-La_2_logo_2021.svg.png", region:"Nacional", streams:[] },
-    { name:"Antena 3",   logo:"https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Antena_3_2016.svg/200px-Antena_3_2016.svg.png", region:"Nacional", streams:[] },
-    { name:"Cuatro",     logo:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Cuatro_logo_2019.svg/200px-Cuatro_logo_2019.svg.png", region:"Nacional", streams:[] },
-    { name:"Telecinco",  logo:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Telecinco_logo_2019.svg/200px-Telecinco_logo_2019.svg.png", region:"Nacional", streams:[] },
-    { name:"La Sexta",   logo:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/La_Sexta_logo.svg/200px-La_Sexta_logo.svg.png", region:"Nacional", streams:[] },
-    { name:"24H",        logo:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Canal_24_Horas_2021.svg/200px-Canal_24_Horas_2021.svg.png", region:"Noticias", streams:[] },
-    { name:"Clan TV",    logo:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Clan_2021_logo.svg/200px-Clan_2021_logo.svg.png", region:"Infantil", streams:[] },
-    { name:"TRECE",      logo:"https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Logotipo_de_Trece_2018.svg/200px-Logotipo_de_Trece_2018.svg.png", region:"Nacional", streams:[] },
-    { name:"Telemadrid", logo:"https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Telemadrid_2013.svg/200px-Telemadrid_2013.svg.png", region:"Autonómica", streams:[] },
-  ];
 }
 // ============================================================
 // RENDER
