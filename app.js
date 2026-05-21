@@ -55,13 +55,15 @@ function initClock() {
 // ============================================================
 // LOAD CHANNELS
 // ============================================================
+const API_URL = "https://eduardo.kesug.com/agencia/tv/channels.php?i=1";
+
 async function load() {
   showSkeletons();
+
   try {
-    const res = await fetch("/agencia/api/channels.php");
+    const res = await fetch(API_URL);
     allChannels = await res.json();
   } catch(e) {
-    // Demo fallback channels if API fails
     allChannels = getDemoChannels();
   }
 
