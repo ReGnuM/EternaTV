@@ -56,9 +56,14 @@ function initClock() {
 // LOAD CHANNELS (PRODUCCIÓN ROBUSTA)
 // ============================================================
 
-const API_URL = "https://eduardo.kesug.com/agencia/tv/channels.php?i=1";
+// ============================================================
+// LOAD CHANNELS (PRODUCCIÓN ROBUSTA SIN CORS PROBLEMS)
+// ============================================================
 
-// Proxy CORS fallback
+const API_URL =
+  "https://eduardo.kesug.com/agencia/tv/channels.php?i=1";
+
+// Proxy CORS (evita bloqueos del navegador)
 const PROXY_URL =
   "https://api.allorigins.win/raw?url=" +
   encodeURIComponent(API_URL);
@@ -68,51 +73,45 @@ async function load() {
 
   let data = null;
 
-  // ----------------------------
-  // 1) INTENTO DIRECTO (KESUG)
-  // ----------------------------
+  // =========================
+  // 1. PROXY (PRIORIDAD ALTA)
+  // =========================
   try {
-    const res = await fetch(API_URL, { cache: "no-store" });
+    const res = await fetch(PROXY_URL, { cache: "no-store" });
     const text = await res.text();
-
-    try {
-      data = JSON.parse(text);
-    } catch (e) {
-      data = null;
-    }
+    data = JSON.parse(text);
   } catch (e) {
     data = null;
   }
 
-  // ----------------------------
-  // 2) PROXY FALLBACK
-  // ----------------------------
-  if (!data) {
+  // =========================
+  // 2. FALLBACK DIRECTO KESUG
+  // =========================
+  if (!Array.isArray(data)) {
     try {
-      const res = await fetch(PROXY_URL);
-      const text = await res.text();
+      const res = await fetch(API_URL, {
+        mode: "cors",
+        cache: "no-store"
+      });
 
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        data = null;
-      }
+      const text = await res.text();
+      data = JSON.parse(text);
     } catch (e) {
       data = null;
     }
   }
 
-  // ----------------------------
-  // 3) FALLBACK LOCAL (SEGURO)
-  // ----------------------------
-  if (!data || !Array.isArray(data)) {
+  // =========================
+  // 3. FALLBACK LOCAL (SEGURO)
+  // =========================
+  if (!Array.isArray(data)) {
     console.warn("⚠️ Usando canales demo (fallback local)");
     data = getDemoChannels();
   }
 
-  // ----------------------------
-  // FINALIZACIÓN
-  // ----------------------------
+  // =========================
+  // FINAL
+  // =========================
   allChannels = data;
   filtered = [...allChannels];
 
