@@ -62,17 +62,20 @@ async function loadChannels() {
   try {
     const res = await fetch(API_URL, { cache: "no-store" });
 
-    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
 
-    const data = await res.json();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      throw new Error("Respuesta no JSON: " + text.slice(0, 50));
+    }
 
     allChannels = normalizeChannels(data);
     filtered = [...allChannels];
 
-    console.log("✔ Canales cargados OK:", allChannels.length);
-
   } catch (e) {
-    console.warn("⚠️ Error cargando canales", e);
+    console.warn("⚠️ API error", e);
 
     allChannels = [];
     filtered = [];
