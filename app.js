@@ -53,71 +53,113 @@ function initClock() {
 }
 
 // ============================================================
-// LOAD CHANNELS (PRODUCCIÓN ROBUSTA)
+// LOAD CHANNELS (ROBUSTO + FALLBACKS)
 // ============================================================
-
-// ============================================================
-// LOAD CHANNELS (PRODUCCIÓN ROBUSTA SIN CORS PROBLEMS)
-// ============================================================
-
-const API_URL =
-  "https://eduardo.kesug.com/agencia/tv/channels.php?i=1";
-
-// Proxy CORS (evita bloqueos del navegador)
-const PROXY_URL =
-  "https://api.allorigins.win/raw?url=" +
-  encodeURIComponent(API_URL);
+const API_URL = "https://eduardo.kesug.com/agencia/tv/channels.php?i=1";
 
 async function load() {
   showSkeletons();
 
   let data = null;
 
-  // =========================
-  // 1. PROXY (PRIORIDAD ALTA)
-  // =========================
+  // 1) INTENTO DIRECTO (KESUG)
   try {
-    const res = await fetch(PROXY_URL, { cache: "no-store" });
-    const text = await res.text();
-    data = JSON.parse(text);
+    const res = await fetch(API_URL, {
+      cache: "no-cache"
+    });
+
+    if (!res.ok) throw new Error("HTTP " + res.status);
+
+    data = await res.json();
+    console.log("✔ Canales cargados desde API directa");
   } catch (e) {
-    data = null;
+    console.warn("⚠️ Fallo API directa, probando proxy...", e);
   }
 
-  // =========================
-  // 2. FALLBACK DIRECTO KESUG
-  // =========================
-  if (!Array.isArray(data)) {
+  // 2) PROXY (si CORS falla)
+  if (!data) {
     try {
-      const res = await fetch(API_URL, {
-        mode: "cors",
-        cache: "no-store"
+      const proxyURL =
+        "https://api.allorigins.win/raw?url=" +
+        encodeURIComponent(API_URL);
+
+      const res = await fetch(proxyURL, {
+        cache: "no-cache"
       });
 
-      const text = await res.text();
-      data = JSON.parse(text);
+      if (!res.ok) throw new Error("Proxy HTTP " + res.status);
+
+      data = await res.json();
+      console.log("✔ Canales cargados desde proxy");
     } catch (e) {
-      data = null;
+      console.warn("⚠️ Proxy falló, usando demo local...", e);
     }
   }
 
-  // =========================
-  // 3. FALLBACK LOCAL (SEGURO)
-  // =========================
-  if (!Array.isArray(data)) {
-    console.warn("⚠️ Usando canales demo (fallback local)");
-    data = getDemoChannels();
+  // 3) DEMO LOCAL (ULTIMO RECURSO)
+  if (!data) {
+    data = [
+      {
+        name: "La 1",
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/La_1_logo_2021.svg/200px-La_1_logo_2021.svg.png",
+        region: "Nacional",
+        streams: []
+      },
+      {
+        name: "La 2",
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/La_2_logo_2021.svg/200px-La_2_logo_2021.svg.png",
+        region: "Nacional",
+        streams: []
+      },
+      {
+        name: "Antena 3",
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Antena_3_2016.svg/200px-Antena_3_2016.svg.png",
+        region: "Nacional",
+        streams: []
+      },
+      {
+        name: "Cuatro",
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Cuatro_logo_2019.svg/200px-Cuatro_logo_2019.svg.png",
+        region: "Nacional",
+        streams: []
+      },
+      {
+        name: "Telecinco",
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Telecinco_logo_2019.svg/200px-Telecinco_logo_2019.svg.png",
+        region: "Nacional",
+        streams: []
+      },
+      {
+        name: "La Sexta",
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/La_Sexta_logo.svg/200px-La_Sexta_logo.svg.png",
+        region: "Nacional",
+        streams: []
+      },
+      {
+        name: "24H",
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Canal_24_Horas_2021.svg/200px-Canal_24_Horas_2021.svg.png",
+        region: "Noticias",
+        streams: []
+      },
+      {
+        name: "Clan TV",
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Clan_2021_logo.svg/200px-Clan_2021_logo.svg.png",
+        region: "Infantil",
+        streams: []
+      }
+    ];
+
+    console.log("⚠️ Usando canales demo (fallback local)");
   }
 
-  // =========================
-  // FINAL
-  // =========================
+  // ASIGNACIÓN FINAL
   allChannels = data;
   filtered = [...allChannels];
 
   updateCount();
   render();
 }
+
 // ============================================================
 // RENDER
 // ============================================================
