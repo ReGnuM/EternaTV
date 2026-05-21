@@ -50,7 +50,7 @@ function initClock() {
 // ============================================================
 // CHANNEL LOADER (ROBUSTO)
 // ============================================================
-const API_URL = "https://eduardo.kesug.com/agencia/tv/channels.php?i=1";
+const API_URL = "https://proxy.rafelweb.workers.dev/";
 
 async function loadChannels() {
   showSkeletons();
