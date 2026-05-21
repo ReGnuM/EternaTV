@@ -2,6 +2,7 @@ let allChannels = [];
 let filtered = [];
 let currentIndex = -1;
 let hls;
+
 let activeCategory = "all";
 let viewMode = "grid";
 
@@ -18,7 +19,7 @@ window.addEventListener("DOMContentLoaded", () => {
   setTimeout(async () => {
     await loadChannels();
     hideSplash();
-  }, 1500);
+  }, 1200);
 });
 
 function hideSplash() {
@@ -30,7 +31,7 @@ function hideSplash() {
   setTimeout(() => {
     splash.style.display = "none";
     app.classList.remove("hidden");
-  }, 600);
+  }, 500);
 }
 
 // ============================================================
@@ -38,76 +39,100 @@ function hideSplash() {
 // ============================================================
 function initClock() {
   const tick = () => {
-    const now = new Date();
+    const d = new Date();
     document.getElementById("clock").textContent =
-      `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      String(d.getHours()).padStart(2, "0") + ":" +
+      String(d.getMinutes()).padStart(2, "0");
   };
+
   tick();
   setInterval(tick, 10000);
 }
 
 // ============================================================
-// CATEGORY DETECTOR (CLAVE)
+// CHANNELS LOAD (SOLO CLOUDLFARE WORKER)
 // ============================================================
-function detectCategory(name = "") {
-  const n = name.toLowerCase();
 
-  if (["la 1","la 2","antena","telecinco","cuatro","sexta"].some(k => n.includes(k)))
-    return "nacional";
-
-  if (["24h","noticias","news","cnn","bbc","euronews"].some(k => n.includes(k)))
-    return "noticias";
-
-  if (["dazn","eurosport","gol","sport","liga"].some(k => n.includes(k)))
-    return "deportes";
-
-  if (["clan","disney","nick","cartoon","boing","baby"].some(k => n.includes(k)))
-    return "infantil";
-
-  if (["mtv","comedy","fox","neox","fdf","energy","divinity","paramount"].some(k => n.includes(k)))
-    return "entretenimiento";
-
-  if (["tv3","telemadrid","canal sur","etb","ib3","aragón","tvg"].some(k => n.includes(k)))
-    return "autonómica";
-
-  return "otros";
-}
-
-// ============================================================
-// LOAD CHANNELS
-// ============================================================
-const API_URL = "https://proxy.rafelweb.workers.dev/";
+// IMPORTANTE: aquí YA NO llamas a Kesug directamente
+const API_URL = "https://proxy.rafelweb.workers.dev/channels";
 
 async function loadChannels() {
   showSkeletons();
 
-  let data = null;
-
   try {
     const res = await fetch(API_URL, { cache: "no-store" });
+
     if (!res.ok) throw new Error("HTTP " + res.status);
-    data = await res.json();
+
+    const data = await res.json();
+
+    allChannels = normalizeChannels(data);
+    filtered = [...allChannels];
+
+    console.log("✔ Canales cargados OK:", allChannels.length);
+
   } catch (e) {
-    console.warn("⚠️ API error", e);
+    console.warn("⚠️ Error cargando canales", e);
+
+    allChannels = [];
+    filtered = [];
   }
 
-  if (!data || !Array.isArray(data)) {
-    data = [
-      { name: "La 1", streams: [] },
-      { name: "Antena 3", streams: [] },
-      { name: "Telecinco", streams: [] }
-    ];
-  }
+  updateCount();
+  render();
+}
 
-  // NORMALIZACIÓN + CLASIFICACIÓN
-  allChannels = data.map(c => ({
+// ============================================================
+// NORMALIZADOR (CLAVE PARA CATEGORÍAS)
+// ============================================================
+function normalizeChannels(data) {
+  return (data || []).map(c => ({
     name: c.name || "Sin nombre",
     logo: c.logo || "",
-    streams: c.streams || [],
-    category: detectCategory(c.name || "")
+    region: (c.region || "").toLowerCase(),
+    category: detectCategory(c),
+    streams: c.streams || []
   }));
+}
 
-  applyFilters();
+// 👉 AQUÍ SE ARREGLA TU PROBLEMA DE CATEGORÍAS
+function detectCategory(c) {
+  const name = (c.name || "").toLowerCase();
+  const region = (c.region || "").toLowerCase();
+
+  if (
+    name.includes("la 1") ||
+    name.includes("la 2") ||
+    name.includes("antena") ||
+    name.includes("telecinco") ||
+    name.includes("cuatro")
+  ) return "nacional";
+
+  if (
+    name.includes("24") ||
+    name.includes("noticias") ||
+    name.includes("news")
+  ) return "noticias";
+
+  if (
+    name.includes("clan") ||
+    name.includes("disney") ||
+    name.includes("cartoon")
+  ) return "infantil";
+
+  if (
+    name.includes("sport") ||
+    name.includes("eurosport")
+  ) return "deportes";
+
+  if (
+    region.includes("madrid") ||
+    region.includes("cataluña") ||
+    region.includes("valencia") ||
+    name.includes("tve")
+  ) return "autonomica";
+
+  return "otros";
 }
 
 // ============================================================
@@ -118,9 +143,9 @@ function showSkeletons() {
   grid.innerHTML = "";
 
   for (let i = 0; i < 12; i++) {
-    const div = document.createElement("div");
-    div.className = "skeleton skeleton-card";
-    grid.appendChild(div);
+    const d = document.createElement("div");
+    d.className = "skeleton skeleton-card";
+    grid.appendChild(d);
   }
 }
 
@@ -144,27 +169,25 @@ function render() {
 
     el.innerHTML = `
       <div class="card-logo">
-        ${c.logo ? `<img src="${c.logo}" onerror="this.style.display='none'">` : ""}
+        ${c.logo ? `<img src="${c.logo}">` : ""}
       </div>
       <div class="card-name">${c.name}</div>
-      <div class="card-region">${c.category}</div>
+      <div class="card-region">${c.region}</div>
     `;
 
-    el.onclick = () => playChannel(c, i);
+    el.onclick = () => play(c, i);
+
     grid.appendChild(el);
   });
-
-  updateCount();
 }
 
 // ============================================================
 // PLAY
 // ============================================================
-function playChannel(c, index) {
+function play(c, index) {
   currentIndex = index;
 
   document.getElementById("now-playing-title").textContent = c.name;
-  document.getElementById("now-playing-prog").textContent = "En directo";
 
   const video = document.getElementById("video");
   const overlay = document.getElementById("player-overlay");
@@ -192,51 +215,88 @@ function playChannel(c, index) {
   }
 
   video.play().catch(() => {});
+
+  loadEPG(c);
 }
 
 // ============================================================
-// SEARCH + FILTER
+// 🔥 EPG "NIVEL PRO" (SIMULADO POR CANAL PERO CONSISTENTE)
+// ============================================================
+function loadEPG(channel) {
+  const list = document.getElementById("epg-list");
+  list.innerHTML = "";
+
+  const basePrograms = [
+    "Noticias",
+    "Magazine",
+    "Serie",
+    "Documental",
+    "Deportes",
+    "Cine",
+    "Reality",
+    "Informativo"
+  ];
+
+  const now = new Date();
+
+  for (let i = -2; i <= 6; i++) {
+    const t = new Date(now);
+    t.setHours(now.getHours() + i, 0, 0, 0);
+
+    const idx =
+      (channel.name.length + t.getHours()) % basePrograms.length;
+
+    const item = document.createElement("div");
+    item.className = "epg-item";
+
+    item.innerHTML = `
+      <div class="epg-time">${String(t.getHours()).padStart(2, "0")}:00</div>
+      <div class="epg-prog">${basePrograms[idx]}</div>
+    `;
+
+    list.appendChild(item);
+  }
+}
+
+// ============================================================
+// SEARCH + FILTERS
 // ============================================================
 function initSearch() {
   const input = document.getElementById("search");
 
-  input.addEventListener("input", applyFilters);
+  input.addEventListener("input", () => {
+    const q = input.value.toLowerCase();
+
+    filtered = allChannels.filter(c =>
+      c.name.toLowerCase().includes(q)
+    );
+
+    applyCategory();
+  });
 }
 
-function applyFilters() {
-  const q = document.getElementById("search").value.toLowerCase().trim();
+function initTabs() {
+  document.querySelectorAll(".tab").forEach(t => {
+    t.onclick = () => {
+      document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+      t.classList.add("active");
 
+      activeCategory = t.dataset.cat;
+      applyCategory();
+    };
+  });
+}
+
+function applyCategory() {
   filtered = allChannels.filter(c => {
-    const matchSearch =
-      !q || c.name.toLowerCase().includes(q);
-
-    const matchCat =
-      activeCategory === "all" ||
-      c.category === activeCategory;
-
-    return matchSearch && matchCat;
+    if (activeCategory === "all") return true;
+    return c.category === activeCategory;
   });
 
+  updateCount();
   render();
 }
 
-// ============================================================
-// TABS
-// ============================================================
-function initTabs() {
-  document.querySelectorAll(".tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-      tab.classList.add("active");
-
-      activeCategory = tab.dataset.cat;
-      applyFilters();
-    });
-  });
-}
-
-// ============================================================
-// VIEW
 // ============================================================
 function initViewToggle() {
   document.getElementById("view-grid").onclick = () => {
@@ -252,9 +312,6 @@ function initViewToggle() {
   };
 }
 
-// ============================================================
-// PLAYER CONTROLS
-// ============================================================
 function initPlayerControls() {
   const video = document.getElementById("video");
 
@@ -269,9 +326,6 @@ function initPlayerControls() {
   };
 }
 
-// ============================================================
-// COUNT
-// ============================================================
 function updateCount() {
   document.getElementById("channel-count").textContent =
     `${filtered.length} canales`;
