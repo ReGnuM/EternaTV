@@ -47,7 +47,34 @@ function initClock() {
 }
 
 // ============================================================
-// LOAD CHANNELS (PRODUCTION READY)
+// CATEGORY DETECTOR (CLAVE)
+// ============================================================
+function detectCategory(name = "") {
+  const n = name.toLowerCase();
+
+  if (["la 1","la 2","antena","telecinco","cuatro","sexta"].some(k => n.includes(k)))
+    return "nacional";
+
+  if (["24h","noticias","news","cnn","bbc","euronews"].some(k => n.includes(k)))
+    return "noticias";
+
+  if (["dazn","eurosport","gol","sport","liga"].some(k => n.includes(k)))
+    return "deportes";
+
+  if (["clan","disney","nick","cartoon","boing","baby"].some(k => n.includes(k)))
+    return "infantil";
+
+  if (["mtv","comedy","fox","neox","fdf","energy","divinity","paramount"].some(k => n.includes(k)))
+    return "entretenimiento";
+
+  if (["tv3","telemadrid","canal sur","etb","ib3","aragón","tvg"].some(k => n.includes(k)))
+    return "autonómica";
+
+  return "otros";
+}
+
+// ============================================================
+// LOAD CHANNELS
 // ============================================================
 const API_URL = "https://proxy.rafelweb.workers.dev/";
 
@@ -59,30 +86,25 @@ async function loadChannels() {
   try {
     const res = await fetch(API_URL, { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
-
     data = await res.json();
-    console.log("✔ Canales cargados");
   } catch (e) {
-    console.warn("⚠️ Error API", e);
+    console.warn("⚠️ API error", e);
   }
 
-  // Validación real
   if (!data || !Array.isArray(data)) {
-    console.warn("⚠️ Fallback demo");
-
     data = [
-      { name: "La 1", region: "nacional", streams: [] },
-      { name: "Antena 3", region: "nacional", streams: [] },
-      { name: "Telecinco", region: "nacional", streams: [] }
+      { name: "La 1", streams: [] },
+      { name: "Antena 3", streams: [] },
+      { name: "Telecinco", streams: [] }
     ];
   }
 
-  // Normalización (CLAVE)
+  // NORMALIZACIÓN + CLASIFICACIÓN
   allChannels = data.map(c => ({
     name: c.name || "Sin nombre",
     logo: c.logo || "",
-    region: (c.region || "").toLowerCase(),
     streams: c.streams || [],
+    category: detectCategory(c.name || "")
   }));
 
   applyFilters();
@@ -122,10 +144,10 @@ function render() {
 
     el.innerHTML = `
       <div class="card-logo">
-        ${c.logo ? `<img src="${c.logo}" onerror="this.style.display='none'"/>` : ""}
+        ${c.logo ? `<img src="${c.logo}" onerror="this.style.display='none'">` : ""}
       </div>
       <div class="card-name">${c.name}</div>
-      <div class="card-region">${c.region}</div>
+      <div class="card-region">${c.category}</div>
     `;
 
     el.onclick = () => playChannel(c, i);
@@ -173,7 +195,7 @@ function playChannel(c, index) {
 }
 
 // ============================================================
-// SEARCH + FILTERS (FIX REAL)
+// SEARCH + FILTER
 // ============================================================
 function initSearch() {
   const input = document.getElementById("search");
@@ -186,58 +208,16 @@ function applyFilters() {
 
   filtered = allChannels.filter(c => {
     const matchSearch =
-      !q ||
-      c.name.toLowerCase().includes(q) ||
-      c.region.includes(q);
+      !q || c.name.toLowerCase().includes(q);
 
     const matchCat =
       activeCategory === "all" ||
-      categoryMatch(c, activeCategory);
+      c.category === activeCategory;
 
     return matchSearch && matchCat;
   });
 
   render();
-}
-
-// ============================================================
-// CATEGORY ENGINE (FIX IMPORTANTE)
-// ============================================================
-function categoryMatch(c, cat) {
-  const name = c.name.toLowerCase();
-  const region = c.region;
-
-  switch (cat) {
-    case "nacional":
-      return ["la 1","la2","antena 3","telecinco","cuatro","sexta"]
-        .some(k => name.includes(k));
-
-    case "noticias":
-      return ["24h","news","noticias","cnn","bbc"]
-        .some(k => name.includes(k));
-
-    case "deportes":
-      return ["sport","dazn","gol","liga"]
-        .some(k => name.includes(k));
-
-    case "infantil":
-      return ["clan","disney","nick","cartoon","boing"]
-        .some(k => name.includes(k));
-
-    case "entretenimiento":
-      return ["mtv","comedy","neox","fdf","energy","divinity"]
-        .some(k => name.includes(k));
-
-    case "autonómica":
-      return (
-        region.includes("auto") ||
-        ["tv3","telemadrid","canal sur","etb"]
-          .some(k => name.includes(k))
-      );
-
-    default:
-      return true;
-  }
 }
 
 // ============================================================
