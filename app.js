@@ -41,7 +41,8 @@ function initClock() {
   const tick = () => {
     const d = new Date();
     document.getElementById("clock").textContent =
-      String(d.getHours()).padStart(2, "0") + ":" +
+      String(d.getHours()).padStart(2, "0") +
+      ":" +
       String(d.getMinutes()).padStart(2, "0");
   };
 
@@ -50,10 +51,8 @@ function initClock() {
 }
 
 // ============================================================
-// CHANNELS LOAD (SOLO CLOUDLFARE WORKER)
+// CHANNELS LOAD (CLOUDFARE WORKER ONLY)
 // ============================================================
-
-// IMPORTANTE: aquí YA NO llamas a Kesug directamente
 const API_URL = "https://proxy.rafelweb.workers.dev/channels";
 
 async function loadChannels() {
@@ -68,14 +67,19 @@ async function loadChannels() {
     try {
       data = JSON.parse(text);
     } catch (e) {
-      throw new Error("Respuesta no JSON: " + text.slice(0, 50));
+      throw new Error("Worker no devuelve JSON válido");
     }
 
-    allChannels = normalizeChannels(data);
+    if (!Array.isArray(data)) throw new Error("Formato inválido");
+
+    // 👇 IMPORTANTE: no tocar categorías
+    allChannels = data;
     filtered = [...allChannels];
 
+    console.log("✔ Canales cargados:", allChannels.length);
+
   } catch (e) {
-    console.warn("⚠️ API error", e);
+    console.warn("⚠️ Error cargando canales", e);
 
     allChannels = [];
     filtered = [];
@@ -86,60 +90,7 @@ async function loadChannels() {
 }
 
 // ============================================================
-// NORMALIZADOR (CLAVE PARA CATEGORÍAS)
-// ============================================================
-function normalizeChannels(data) {
-  return (data || []).map(c => ({
-    name: c.name || "Sin nombre",
-    logo: c.logo || "",
-    region: (c.region || "").toLowerCase(),
-    category: detectCategory(c),
-    streams: c.streams || []
-  }));
-}
-
-// 👉 AQUÍ SE ARREGLA TU PROBLEMA DE CATEGORÍAS
-function detectCategory(c) {
-  const name = (c.name || "").toLowerCase();
-  const region = (c.region || "").toLowerCase();
-
-  if (
-    name.includes("la 1") ||
-    name.includes("la 2") ||
-    name.includes("antena") ||
-    name.includes("telecinco") ||
-    name.includes("cuatro")
-  ) return "nacional";
-
-  if (
-    name.includes("24") ||
-    name.includes("noticias") ||
-    name.includes("news")
-  ) return "noticias";
-
-  if (
-    name.includes("clan") ||
-    name.includes("disney") ||
-    name.includes("cartoon")
-  ) return "infantil";
-
-  if (
-    name.includes("sport") ||
-    name.includes("eurosport")
-  ) return "deportes";
-
-  if (
-    region.includes("madrid") ||
-    region.includes("cataluña") ||
-    region.includes("valencia") ||
-    name.includes("tve")
-  ) return "autonomica";
-
-  return "otros";
-}
-
-// ============================================================
-// RENDER
+// UI
 // ============================================================
 function showSkeletons() {
   const grid = document.getElementById("grid");
@@ -172,10 +123,11 @@ function render() {
 
     el.innerHTML = `
       <div class="card-logo">
-        ${c.logo ? `<img src="${c.logo}">` : ""}
+        ${c.logo ? `<img src="${c.logo}" />` : ""}
       </div>
       <div class="card-name">${c.name}</div>
-      <div class="card-region">${c.region}</div>
+      <div class="card-region">${c.region || ""}</div>
+      <div class="card-category">${c.category || ""}</div>
     `;
 
     el.onclick = () => play(c, i);
@@ -218,51 +170,10 @@ function play(c, index) {
   }
 
   video.play().catch(() => {});
-
-  loadEPG(c);
 }
 
 // ============================================================
-// 🔥 EPG "NIVEL PRO" (SIMULADO POR CANAL PERO CONSISTENTE)
-// ============================================================
-function loadEPG(channel) {
-  const list = document.getElementById("epg-list");
-  list.innerHTML = "";
-
-  const basePrograms = [
-    "Noticias",
-    "Magazine",
-    "Serie",
-    "Documental",
-    "Deportes",
-    "Cine",
-    "Reality",
-    "Informativo"
-  ];
-
-  const now = new Date();
-
-  for (let i = -2; i <= 6; i++) {
-    const t = new Date(now);
-    t.setHours(now.getHours() + i, 0, 0, 0);
-
-    const idx =
-      (channel.name.length + t.getHours()) % basePrograms.length;
-
-    const item = document.createElement("div");
-    item.className = "epg-item";
-
-    item.innerHTML = `
-      <div class="epg-time">${String(t.getHours()).padStart(2, "0")}:00</div>
-      <div class="epg-prog">${basePrograms[idx]}</div>
-    `;
-
-    list.appendChild(item);
-  }
-}
-
-// ============================================================
-// SEARCH + FILTERS
+// SEARCH
 // ============================================================
 function initSearch() {
   const input = document.getElementById("search");
@@ -278,6 +189,9 @@ function initSearch() {
   });
 }
 
+// ============================================================
+// TABS (USA CATEGORY REAL DEL BACKEND)
+// ============================================================
 function initTabs() {
   document.querySelectorAll(".tab").forEach(t => {
     t.onclick = () => {
@@ -293,7 +207,9 @@ function initTabs() {
 function applyCategory() {
   filtered = allChannels.filter(c => {
     if (activeCategory === "all") return true;
-    return c.category === activeCategory;
+
+    // 🔥 AQUÍ ESTÁ LA CLAVE: usar category REAL del backend
+    return (c.category || "").toLowerCase() === activeCategory;
   });
 
   updateCount();
